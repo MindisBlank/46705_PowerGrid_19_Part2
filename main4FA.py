@@ -4,7 +4,7 @@ Main Script for Fault Analysis
 """
 
 import FaultAnalysis_46705 as fa    # import Fault Analysis functions
-import LoadNetworkData4fa as lnd4fa # load the network data to global variables
+import LoadNetworkData as lnd4fa # load the network data to global variables
 filename = "./TestSystem4FA.txt"
 lnd4fa.LoadNetworkData4FA(filename) # makes Zbus0 available as lndfa.Zbus0 etc.
 # Carry out the fault analysis ... 

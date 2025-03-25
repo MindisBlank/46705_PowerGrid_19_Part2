@@ -27,6 +27,8 @@ def Calculate_Sequence_Fault_Currents(Zbus0,Zbus1,Zbus2,bus_to_ind,fault_bus,fau
     # Iseq[0] = zero-sequence; Iseq[1] = positive-sequence; Iseq[2] = negative-sequence
     Iseq = np.zeros(3,dtype=complex)
     fb = bus_to_ind[fault_bus]
+    # FaultType: 0 = 3-phase balanced fault; 1 = Single Line-to-Ground fault;
+#            2 = Line-to-Line fault;     3 = Double Line-to-Ground fault.
     if fault_type == 0:
         # enter your code here
     elif fault_type == 1:
