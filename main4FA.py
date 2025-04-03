@@ -32,5 +32,5 @@ else :
     Iph,Vph_mat = fa.FaultAnalysis(lnd4fa.Zbus0,lnd4fa.Zbus1,lnd4fa.Zbus2,lnd4fa.bus_to_ind, 
                                 FaultBus,FaultType,FaultImpedance,PrefaultVoltage)
     # Display results
-    fa.DisplayFaultAnalysisResults(Iph,Vph_mat,FaultBus,FaultType,FaultImpedance,PrefaultVoltage)
+    fa.DisplayFaultAnalysisResults(Iph,Vph_mat,FaultBus,FaultType,FaultImpedance,PrefaultVoltage,lnd4fa.bus_to_ind)
     print('**********End of Fault Analysis**********')

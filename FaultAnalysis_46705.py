@@ -243,7 +243,7 @@ def Convert_Sequence2Phase_Voltages(Vseq_mat):
 # #  Displaying the results in the terminal window   #
 # ####################################################
 # 2. the DisplayFaultAnalysisResults() function
-def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf):
+def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf,bus_to_ind):
     """
     Displays phase fault currents (Iph) at the faulted bus and the phase line-to-ground
     voltages (Vph_mat) at all buses.
@@ -309,9 +309,10 @@ def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf):
     
     num_buses = Vph_mat.shape[0]
     for i in range(num_buses):
+        bus_number = list(bus_to_ind.keys())[list(bus_to_ind.values()).index(i)]
         Va_str = cpx_mag_ang_str(Vph_mat[i, 0])
         Vb_str = cpx_mag_ang_str(Vph_mat[i, 1])
         Vc_str = cpx_mag_ang_str(Vph_mat[i, 2])
-        print(f"{i+1:4d}  {Va_str:>20s}  {Vb_str:>20s}  {Vc_str:>20s}")
+        print(f"{bus_number:4d}  {Va_str:>20s}  {Vb_str:>20s}  {Vc_str:>20s}")
     
     print("==============================================================")

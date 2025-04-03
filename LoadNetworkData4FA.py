@@ -129,12 +129,28 @@ def LoadNetworkData4FA(filename):
             Ybus0[i, i] += 1.0 / (1j * X0)
 
     #############################################################
-    # Finally, compute the bus impedance matrices by inverting (using the pseudo-inverse)
-    # the Ybus matrices.
+    # Finally, compute the bus impedance matrices by inverting
+    # the Ybus matrices. If a matrix is singular, catch the error,
+    # print a message, and then use the pseudo-inverse.
     #############################################################
-    Zbus0 = np.linalg.inv(Ybus0)
-    Zbus1 = np.linalg.inv(Ybus)
-    Zbus2 = np.linalg.inv(Ybus2)
+    try:
+        Zbus0 = np.linalg.inv(Ybus0)
+    except np.linalg.LinAlgError:
+        print("Ybus0 is singular; using pseudo-inverse.")
+        Zbus0 = np.linalg.pinv(Ybus0)
+
+    try:
+        Zbus1 = np.linalg.inv(Ybus)
+    except np.linalg.LinAlgError:
+        print("Ybus is singular; using pseudo-inverse.")
+        Zbus1 = np.linalg.pinv(Ybus)
+
+    try:
+        Zbus2 = np.linalg.inv(Ybus2)
+    except np.linalg.LinAlgError:
+        print("Ybus2 is singular; using pseudo-inverse.")
+        Zbus2 = np.linalg.pinv(Ybus2)
+
 
     return
     # Alternatively, you can return the matrices if needed:
