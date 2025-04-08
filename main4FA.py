@@ -10,7 +10,7 @@ lnd4fa.LoadNetworkData4FA(filename) # makes Zbus0 available as lndfa.Zbus0 etc.
 
 print('**********Start of Fault Analysis**********')
 
-p=0
+p=0 # Set p=1 to display Ybus and Zbus matrices, set p=0 to carry out fault analysis.
 if p==1:
     print(f'Zbus0 = \n {np.array2string(np.round(lnd4fa.Zbus0, 2), separator=", ")}')
     print(f'Zbus1 = \n {np.array2string(np.round(lnd4fa.Zbus1, 2), separator=", ")}')
@@ -24,7 +24,7 @@ else :
     FaultBus = 4011
     # FaultType: 0 = 3-phase balanced fault; 1 = Single Line-to-Ground fault;
     #            2 = Line-to-Line fault;     3 = Double Line-to-Ground fault.
-    FaultType = 1
+    FaultType = 3
     FaultImpedance = 0 # (in pu) 
     PrefaultVoltage = 1.000 # (in pu)
     # Iph: phase current array (0: phase a; 1: phase b; 2: phase c). 

@@ -1,6 +1,5 @@
 import numpy as np
 import ReadNetworkData as rd
-#TODO: Ask teacher if we can use pseudo-inverse for Ybus0, Ybus2, Zbus0, Zbus2.
 def LoadNetworkData4FA(filename):
     # Make these global so that other functions can use them.
     global Ybus, Ybus0, Ybus2, Zbus0, Zbus1, Zbus2, bus_to_ind
