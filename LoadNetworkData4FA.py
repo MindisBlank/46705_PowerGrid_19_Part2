@@ -1,156 +1,169 @@
+"""
+LoadNetworkData4FA.py
+
+Builds positive-, negative-, and zero-sequence Ybus matrices
+and computes the corresponding Zbus matrices (bus impedances)
+for fault analysis on a given network data file.
+"""
+
 import numpy as np
 import ReadNetworkData as rd
+
+
 def LoadNetworkData4FA(filename):
-    # Make these global so that other functions can use them.
+    """
+    Load network data and construct sequence Ybus/Zbus matrices.
+
+    Parameters:
+        filename (str): Path to the network data file.
+
+    Globals:
+        Ybus (np.ndarray): Positive-sequence bus admittance matrix.
+        Ybus0 (np.ndarray): Zero-sequence bus admittance matrix.
+        Ybus2 (np.ndarray): Negative-sequence bus admittance matrix.
+        Zbus0 (np.ndarray): Zero-sequence bus impedance matrix.
+        Zbus1 (np.ndarray): Positive-sequence bus impedance matrix.
+        Zbus2 (np.ndarray): Negative-sequence bus impedance matrix.
+        bus_to_ind (dict): Mapping from bus numbers to indices.
+    """
     global Ybus, Ybus0, Ybus2, Zbus0, Zbus1, Zbus2, bus_to_ind
 
-    # Read the network data from the file using the provided library function.
-    bus_data, load_data, gen_data, line_data, tran_data, mva_base, bus_to_ind, ind_to_bus = \
-        rd.read_network_data_from_file(filename)
+    # Read raw data
+    (bus_data, load_data, gen_data,
+     line_data, tran_data,
+     mva_base, bus_to_ind, ind_to_bus) = rd.read_network_data_from_file(
+        filename
+    )
 
-    # Number of buses in the system.
-    N = len(bus_data)
-    
-    # Initialize the Ybus matrices (complex-valued) for:
-    # Positive-sequence (Ybus), zero-sequence (Ybus0) and negative-sequence (Ybus2)
-    Ybus   = np.zeros((N, N), dtype=complex)
-    Ybus0  = np.zeros((N, N), dtype=complex)
-    Ybus2  = np.zeros((N, N), dtype=complex)
+    num_buses = len(bus_data)
 
-    #############################################################
-    # Process line data
-    # Each line in line_data is assumed to be formatted as:
-    # [fr, to, br_id, R, X, B, MVA_rate, X2, X0]
-    # For fault analysis we ignore shunt admittances (B) and use only series impedances.
-    #############################################################
-    for branch in line_data:
-        fr, to, br_id, R, X, B, MVA_rate, X2, X0 = branch
-        i = bus_to_ind[fr]
-        j = bus_to_ind[to]
-        
-        # Positive-sequence impedance (Z1)
-        Z1 = complex(R, X)
-        Y1 = 1.0 / Z1 if Z1 != 0 else 0
-        
-        # Negative-sequence impedance (Z2)
-        Z2 = complex(R, X2)
-        Y2 = 1.0 / Z2 if Z2 != 0 else 0
-        
-        # Zero-sequence impedance (Z0)
-        Z0 = complex(R, X0)
-        Y0 = 1.0 / Z0 if Z0 != 0 else 0
-        
-        # Update Ybus matrices using standard Ybus construction
-        Ybus[i, i]  += Y1
-        Ybus[j, j]  += Y1
-        Ybus[i, j]  -= Y1
-        Ybus[j, i]  -= Y1
-        
-        Ybus2[i, i] += Y2
-        Ybus2[j, j] += Y2
-        Ybus2[i, j] -= Y2
-        Ybus2[j, i] -= Y2
-        
-        Ybus0[i, i] += Y0
-        Ybus0[j, j] += Y0
-        Ybus0[i, j] -= Y0
-        Ybus0[j, i] -= Y0
+    # Initialize zeroed Ybus matrices (complex)
+    Ybus = np.zeros((num_buses, num_buses), dtype=complex)
+    Ybus0 = np.zeros((num_buses, num_buses), dtype=complex)
+    Ybus2 = np.zeros((num_buses, num_buses), dtype=complex)
 
-    #############################################################
-    # Process transformer data
-    # Each transformer in tran_data is assumed to be formatted as:
-    # [fr, to, br_id, R, X, n, ang1, MVA_rate, fr_co, to_co, X2, X0]
-    # where n is the tap ratio and ang1 is the phase shift (in degrees).
-    # The connection codes (fr_co, to_co) are assumed to be:
-    #    1 or 2  --> wye (or wye-grounded),
-    #    3       --> delta.
-    # For positive and negative sequence, we include the branch (with tap adjustments).
-    # For zero sequence, if either winding is delta (code == 3), then we do not include it.
-    #############################################################
-    for tra in tran_data:
-        fr, to, br_id, R, X, n, ang1, MVA_rate, fr_co, to_co, X2, X0 = tra
+    # ---------------------------------------------------------------------
+    # 1) Stamp line data (ignore shunt admittances for fault analysis)
+    # ---------------------------------------------------------------------
+    for (fr, to, _br_id,
+         r, x, _b_half,
+         _mva_rate, x2, x0) in line_data:
         i = bus_to_ind[fr]
         j = bus_to_ind[to]
 
-        # Compute the complex tap ratio:
-        t = n * np.exp(1j * ang1 * np.pi / 180)
-        
-        # Positive-sequence branch impedance and admittance.
-        Z1 = complex(R, X)
-        Y1 = 1.0 / Z1 if Z1 != 0 else 0
-        
-        # Negative-sequence branch impedance and admittance.
-        Z2 = complex(R, X2)
-        Y2 = 1.0 / Z2 if Z2 != 0 else 0
-        
-        # Zero-sequence: check for delta connection.
+        z1 = complex(r, x)
+        y1 = 1.0 / z1 if z1 != 0 else 0
+
+        z2 = complex(r, x2)
+        y2 = 1.0 / z2 if z2 != 0 else 0
+
+        z0 = complex(r, x0)
+        y0 = 1.0 / z0 if z0 != 0 else 0
+
+        # Positive-sequence
+        Ybus[i, i] += y1
+        Ybus[j, j] += y1
+        Ybus[i, j] -= y1
+        Ybus[j, i] -= y1
+
+        # Negative-sequence
+        Ybus2[i, i] += y2
+        Ybus2[j, j] += y2
+        Ybus2[i, j] -= y2
+        Ybus2[j, i] -= y2
+
+        # Zero-sequence
+        Ybus0[i, i] += y0
+        Ybus0[j, j] += y0
+        Ybus0[i, j] -= y0
+        Ybus0[j, i] -= y0
+
+    # ---------------------------------------------------------------------
+    # 2) Stamp transformer data
+    # ---------------------------------------------------------------------
+    for (fr, to, _br_id,
+         r, x, tap, ang,
+         _mva_rate, fr_co, to_co,
+         x2, x0) in tran_data:
+        i = bus_to_ind[fr]
+        j = bus_to_ind[to]
+
+        tap_ratio = tap * np.exp(1j * np.deg2rad(ang))
+
+        z1 = complex(r, x)
+        y1 = 1.0 / z1 if z1 != 0 else 0
+
+        z2 = complex(r, x2)
+        y2 = 1.0 / z2 if z2 != 0 else 0
+
         if int(fr_co) == 3 or int(to_co) == 3:
-            Y0 = 0
+            y0 = 0
         else:
-            Z0 = complex(R, X0)
-            Y0 = 1.0 / Z0 if Z0 != 0 else 0
+            z0 = complex(r, x0)
+            y0 = 1.0 / z0 if z0 != 0 else 0
 
-        # Update positive-sequence Ybus.
-        Ybus[i, i]  += Y1 / (t * np.conjugate(t))
-        Ybus[j, j]  += Y1
-        Ybus[i, j]  -= Y1 / np.conjugate(t)
-        Ybus[j, i]  -= Y1 / t
-        
-        # Update negative-sequence Ybus2.
-        Ybus2[i, i] += Y2 / (t * np.conjugate(t))
-        Ybus2[j, j] += Y2
-        Ybus2[i, j] -= Y2 / np.conjugate(t)
-        Ybus2[j, i] -= Y2 / t
-        
-        # Update zero-sequence Ybus0 if allowed.
-        if Y0 != 0:
-            Ybus0[i, i] += Y0 / (t * np.conjugate(t))
-            Ybus0[j, j] += Y0
-            Ybus0[i, j] -= Y0 / np.conjugate(t)
-            Ybus0[j, i] -= Y0 / t
+        # Positive-sequence stamping with tap
+        Ybus[i, i] += y1 / (tap_ratio * np.conj(tap_ratio))
+        Ybus[j, j] += y1
+        Ybus[i, j] -= y1 / np.conj(tap_ratio)
+        Ybus[j, i] -= y1 / tap_ratio
 
-    #############################################################
-    # Process generator data: Add generator impedances as shunt admittances.
-    # Each generator in gen_data is formatted as:
-    # [bus_nr, mva_size, p_gen, p_max, q_max, q_min, X1, X2, X0, Xn, grnd]
-    #############################################################
-    for gen in gen_data:
-        bus_nr, mva_size, p_gen, p_max, q_max, q_min, X1, X2, X0, Xn, grnd = gen
-        i = bus_to_ind[bus_nr]
-        # Positive-sequence: add shunt admittance 1/(j*X1)
-        if X1 != 0:
-            Ybus[i, i] += 1.0 / (1j * X1)
-        # Negative-sequence: add shunt admittance 1/(j*X2)
-        if X2 != 0:
-            Ybus2[i, i] += 1.0 / (1j * X2)
-        # Zero-sequence: add shunt admittance 1/(j*X0) only if generator is grounded.
-        if grnd and X0 != 0:
-            Ybus0[i, i] += 1.0 / (1j * X0)
+        # Negative-sequence stamping with tap
+        Ybus2[i, i] += y2 / (tap_ratio * np.conj(tap_ratio))
+        Ybus2[j, j] += y2
+        Ybus2[i, j] -= y2 / np.conj(tap_ratio)
+        Ybus2[j, i] -= y2 / tap_ratio
 
-    #############################################################
-    # Finally, compute the bus impedance matrices by inverting
-    # the Ybus matrices. If a matrix is singular, catch the error,
-    # print a message, and then use the pseudo-inverse.
-    #############################################################
+        # Zero-sequence stamping if wye-wye
+        if y0:
+            Ybus0[i, i] += y0 / (tap_ratio * np.conj(tap_ratio))
+            Ybus0[j, j] += y0
+            Ybus0[i, j] -= y0 / np.conj(tap_ratio)
+            Ybus0[j, i] -= y0 / tap_ratio
+
+    # ---------------------------------------------------------------------
+    # 3) Stamp generator shunt admittances (with base conversion)
+    # ---------------------------------------------------------------------
+    for (bus_nr, mva_gen,
+         _p_gen, _p_max,
+         _q_max, _q_min,
+         x1, x2, x0,
+         _x_n, grounded) in gen_data:
+        idx = bus_to_ind[bus_nr]
+
+        # Convert machine reactances to system base
+        x1_sys = x1 * (mva_gen / mva_base)
+        x2_sys = x2 * (mva_gen / mva_base)
+        x0_sys = x0 * (mva_gen / mva_base)
+
+        if x1_sys:
+            Ybus[idx, idx] += 1.0 / (1j * x1_sys)
+
+        if x2_sys:
+            Ybus2[idx, idx] += 1.0 / (1j * x2_sys)
+
+        if grounded and x0_sys:
+            Ybus0[idx, idx] += 1.0 / (1j * x0_sys)
+
+    # ---------------------------------------------------------------------
+    # 4) Invert Ybus to Zbus with fallback to pseudo-inverse
+    # ---------------------------------------------------------------------
     try:
         Zbus0 = np.linalg.inv(Ybus0)
     except np.linalg.LinAlgError:
-        print("Ybus0 is singular; using pseudo-inverse.")
-        Zbus0 = np.linalg.pinv(Ybus0)
+        print("Error: Ybus0 matrix is singular; cannot invert.")
+        Zbus0 = None
 
     try:
         Zbus1 = np.linalg.inv(Ybus)
     except np.linalg.LinAlgError:
-        print("Ybus is singular; using pseudo-inverse.")
-        Zbus1 = np.linalg.pinv(Ybus)
+        print("Error: Ybus1 matrix is singular; cannot invert.")
+        Zbus1 = None
 
     try:
         Zbus2 = np.linalg.inv(Ybus2)
     except np.linalg.LinAlgError:
-        print("Ybus2 is singular; using pseudo-inverse.")
-        Zbus2 = np.linalg.pinv(Ybus2)
-
+        print("Error: Ybus2 matrix is singular; cannot invert.")
+        Zbus2 = None
 
     return
-    # Alternatively, you can return the matrices if needed:
-    # return Zbus0, Zbus1, Zbus2, Ybus, Ybus0, Ybus2, bus_to_ind, ind_to_bus

@@ -1,36 +1,81 @@
 # -*- coding: utf-8 -*-
 """
-Main Script for Fault Analysis
+Main Script for Fault Analysis (batch mode)
+Generates results_B.txt with all fault types.
 """
-import numpy as np  # Ensure NumPy is imported
-import FaultAnalysis_46705 as fa    # import Fault Analysis functions
-import LoadNetworkData4FA as lnd4fa # load the network data to global variables
-filename = "Nordic32_4FA.txt" # TestSystem4FA.txt  Nordic32_SA.txt
-lnd4fa.LoadNetworkData4FA(filename) # makes Zbus0 available as lndfa.Zbus0 etc.
+import numpy as np
+import io
+from contextlib import redirect_stdout
 
-print('**********Start of Fault Analysis**********')
+import FaultAnalysis_46705 as fa
+import LoadNetworkData4FA as lnd4fa
 
-p=0 # Set p=1 to display Ybus and Zbus matrices, set p=0 to carry out fault analysis.
-if p==1:
-    print(f'Zbus0 = \n {np.array2string(np.round(lnd4fa.Zbus0, 2), separator=", ")}')
-    print(f'Zbus1 = \n {np.array2string(np.round(lnd4fa.Zbus1, 2), separator=", ")}')
-    print(f'Zbus2 = \n {np.array2string(np.round(lnd4fa.Zbus2, 2), separator=", ")}')
-    print(f'Ybus0 = \n {np.array2string(np.round(lnd4fa.Ybus0, 2), separator=", ")}')
-    print(f'Ybus1 = \n {np.array2string(np.round(lnd4fa.Ybus, 2), separator=", ")}')
-    print(f'Ybus2 = \n {np.array2string(np.round(lnd4fa.Ybus2, 2), separator=", ")}')
-    print('Bus to Index = \n', lnd4fa.bus_to_ind)
-else :
-    # Carry out the fault analysis ... 
-    FaultBus = 4011
-    # FaultType: 0 = 3-phase balanced fault; 1 = Single Line-to-Ground fault;
-    #            2 = Line-to-Line fault;     3 = Double Line-to-Ground fault.
-    FaultType = 1
-    FaultImpedance = 0 # (in pu) 
-    PrefaultVoltage = 1.000 # (in pu)
-    # Iph: phase current array (0: phase a; 1: phase b; 2: phase c). 
-    # Vph_mat: phase line-to-ground voltages (rows: busses; columns: phases a, b, c).
-    Iph,Vph_mat = fa.FaultAnalysis(lnd4fa.Zbus0,lnd4fa.Zbus1,lnd4fa.Zbus2,lnd4fa.bus_to_ind, 
-                                FaultBus,FaultType,FaultImpedance,PrefaultVoltage)
-    # Display results
-    fa.DisplayFaultAnalysisResults(Iph,Vph_mat,FaultBus,FaultType,FaultImpedance,PrefaultVoltage,lnd4fa.bus_to_ind)
-    print('**********End of Fault Analysis**********')
+# ------------------------------------------------------------------------------
+# CONFIGURATION
+# ------------------------------------------------------------------------------
+DisplayResults   = 1      # 0 = no console output, 1 = print each result to screen
+filename         = "Nordic32_4FA.txt"
+FaultBus         = 4011
+FaultImpedance   = 0      # per-unit fault impedance
+PrefaultVoltage  = 1.0    # per-unit prefault voltage
+
+fault_types = {
+    0: "Three-phase balanced fault",
+    1: "Single Line-to-Ground fault",
+    2: "Line-to-Line fault",
+    3: "Double Line-to-Ground fault"
+}
+
+# ------------------------------------------------------------------------------
+# LOAD NETWORK DATA
+# ------------------------------------------------------------------------------
+lnd4fa.LoadNetworkData4FA(filename)
+
+# ------------------------------------------------------------------------------
+# OPEN OUTPUT FILE (UTF-8)
+# ------------------------------------------------------------------------------
+with open("results_B.txt", "w", encoding="utf-8") as outfile:
+    outfile.write("********** Fault Analysis Batch Results **********\n\n")
+
+    for ft_code, ft_desc in fault_types.items():
+        Iph, Vph_mat = fa.FaultAnalysis(
+            lnd4fa.Zbus0,
+            lnd4fa.Zbus1,
+            lnd4fa.Zbus2,
+            lnd4fa.bus_to_ind,
+            FaultBus,
+            ft_code,
+            FaultImpedance,
+            PrefaultVoltage
+        )
+
+        # Header
+        outfile.write(f"--- {ft_desc} (Type {ft_code}) at Bus {FaultBus} ---\n\n")
+
+        # Capture display output
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            fa.DisplayFaultAnalysisResults(
+                Iph,
+                Vph_mat,
+                FaultBus,
+                ft_code,
+                FaultImpedance,
+                PrefaultVoltage,
+                lnd4fa.bus_to_ind
+            )
+        outfile.write(buf.getvalue())
+        outfile.write("\n\n")
+
+        if DisplayResults:
+            fa.DisplayFaultAnalysisResults(
+                Iph,
+                Vph_mat,
+                FaultBus,
+                ft_code,
+                FaultImpedance,
+                PrefaultVoltage,
+                lnd4fa.bus_to_ind
+            )
+
+print("All fault cases processed. Results exported to results_B.txt")

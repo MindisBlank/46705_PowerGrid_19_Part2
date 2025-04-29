@@ -135,7 +135,7 @@ def parse_gen_data(row_):
     X2 = float(X2)
     X0 = float(X0)
     Xn = float(Xn)
-    grnd = bool(grnd)
+    grnd = bool(int(grnd)) #changed from bool(grnd) to bool(int(grnd))
     return [bus_nr, mva_size, p_gen, p_max, q_max, q_min, X1, X2, X0, Xn, grnd] 
 
 
@@ -181,7 +181,7 @@ def parse_transformer_data(row_):
     n = float(n) #convert the n str to float
     ang1 = float(ang1) #convert the ang1 str to float
     X2 = float(X2)
-    X0 = float(X2)
+    X0 = float(X0) # I changed this from float(X2)
     MVA_rate=float(MVA_rate)
     return [fr,to,br_id,R,X,n,ang1,MVA_rate,fr_co,to_co,X2,X0] 
 
