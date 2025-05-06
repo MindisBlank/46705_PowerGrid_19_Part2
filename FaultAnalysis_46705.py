@@ -65,7 +65,6 @@ def Calculate_Sequence_Fault_Currents(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
     
     if fault_type == 0:
         # Three-phase fault:
-        # Only the positive-sequence network is active.
         I1 = Vf / (Z1_f + Zf)
         Iseq[0] = 0
         Iseq[1] = I1
@@ -73,7 +72,6 @@ def Calculate_Sequence_Fault_Currents(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
         
     elif fault_type == 1:
         # Single line-to-ground fault:
-        # All three sequence networks are connected in series.
         I_fault = Vf / (Z0_f + Z1_f + Z2_f + 3 * Zf)
         Iseq[0] = I_fault
         Iseq[1] = I_fault
@@ -81,8 +79,6 @@ def Calculate_Sequence_Fault_Currents(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
         
     elif fault_type == 2:
         # Line-to-line fault:
-        # The zero-sequence network is not involved (I0 = 0).
-        # Typically, I1 = Vf / (Z1_f + Z2_f + Zf) and I2 = -I1.
         I1 = Vf / (Z1_f + Z2_f + Zf)
         Iseq[0] = 0
         Iseq[1] = I1
@@ -90,20 +86,11 @@ def Calculate_Sequence_Fault_Currents(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
         
     elif fault_type == 3:
         # Double line-to-ground fault:
-        # For a DLG fault, the sequence networks are connected as follows:
-        #     Z1 is in series with a parallel combination of (Z0+3Zf) and (Z2+3Zf).
-        # The equivalent impedance is:
-        #     Z_eq = Z1_f + [ (Z0_f+3Zf)*(Z2_f+3Zf) / (Z0_f+Z2_f+3Zf) ]
-        # Then,
-        #     I1 = Vf / Z_eq
-        # and
-        #     I0 = ((Z2_f+3Zf)/(Z0_f+Z2_f+3Zf)) * I1,
-        #     I2 = ((Z0_f+3Zf)/(Z0_f+Z2_f+3Zf)) * I1.
-        Z_parallel = ((Z0_f + 3 * Zf) * (Z2_f + 3 * Zf)) / (Z0_f + Z2_f + 3 * Zf)
+        Z_parallel = (Z2_f*(Z0_f+3*Zf))/(Z2_f+Z0_f+3*Zf)
         Z_eq = Z1_f + Z_parallel
         I1 = Vf / Z_eq
-        I2 = ((Z0_f + 3 * Zf) / (Z0_f + Z2_f + 3 * Zf)) * I1
-        I0 = -(I1 + I2) #((Z2_f + 3 * Zf) / (Z0_f + Z2_f + 3 * Zf)) * I1
+        I2 = (-I1)*((Z0_f+3*Zf)/(Z0_f+Z2_f+3*Zf))
+        I0 = (-I1)*(Z2_f/(Z0_f+Z2_f+3*Zf))
         Iseq[0] = I0
         Iseq[1] = I1
         Iseq[2] = I2
@@ -155,7 +142,6 @@ def Calculate_Sequence_Fault_Voltages(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
     fault_idx = bus_to_ind[fault_bus]
     
     # For each bus, calculate the sequence voltages.
-    # Note: It is typical to assume that pre-fault zero and negative sequence voltages are zero.
     for i in range(N):
         # Zero-sequence voltage (prefault = 0)
         Vseq_mat[i, 0] = 0 - Zbus0[i, fault_idx] * Iseq[0]
@@ -268,8 +254,6 @@ def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf, bus
         bus_data : list
             Raw bus data from ReadNetworkData; bus_data[idx][5] is kV base.
     """
-    import numpy as np
-
     # --- header ---
     fault_dict = {
         0: "Three-phase fault",
@@ -321,4 +305,3 @@ def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf, bus
             return f"{np.abs(c):.3f} ∠{np.angle(c,deg=True):6.2f}°"
         print(f"{bus_no:4d}  {cpx_str(Va):>20s}  {cpx_str(Vb):>20s}  {cpx_str(Vc):>20s}")
     print("==============================================================")
-

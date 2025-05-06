@@ -6,10 +6,9 @@ Generates results_B.txt with all fault types.
 import numpy as np
 import io
 from contextlib import redirect_stdout
-
 import FaultAnalysis_46705 as fa
 import LoadNetworkData4FA as lnd4fa
-import ReadNetworkData as rd   # <-- new
+import ReadNetworkData as rd   
 
 # ------------------------------------------------------------------------------
 # CONFIGURATION
@@ -28,7 +27,7 @@ fault_types = {
 }
 
 # ------------------------------------------------------------------------------
-# READ BUS DATA & SYSTEM BASE (for Display function)
+# READ BUS DATA & SYSTEM BASE
 # ------------------------------------------------------------------------------
 bus_data, load_data, gen_data, line_data, tran_data, \
 mva_base, bus_to_ind, ind_to_bus = rd.read_network_data_from_file(filename)
@@ -70,8 +69,8 @@ with open("results_B.txt", "w", encoding="utf-8") as outfile:
                 FaultImpedance,
                 PrefaultVoltage,
                 lnd4fa.bus_to_ind,
-                mva_base,            # <-- new
-                bus_data             # <-- new
+                mva_base,            
+                bus_data             
             )
         outfile.write(buf.getvalue())
         outfile.write("\n\n")
@@ -85,8 +84,8 @@ with open("results_B.txt", "w", encoding="utf-8") as outfile:
                 FaultImpedance,
                 PrefaultVoltage,
                 lnd4fa.bus_to_ind,
-                mva_base,            # <-- new
-                bus_data             # <-- new
+                mva_base,            
+                bus_data             
             )
 
 print("All fault cases processed. Results exported to results_B.txt")
