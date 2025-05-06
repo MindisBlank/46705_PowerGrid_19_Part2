@@ -9,6 +9,7 @@ from contextlib import redirect_stdout
 
 import FaultAnalysis_46705 as fa
 import LoadNetworkData4FA as lnd4fa
+import ReadNetworkData as rd   # <-- new
 
 # ------------------------------------------------------------------------------
 # CONFIGURATION
@@ -27,7 +28,13 @@ fault_types = {
 }
 
 # ------------------------------------------------------------------------------
-# LOAD NETWORK DATA
+# READ BUS DATA & SYSTEM BASE (for Display function)
+# ------------------------------------------------------------------------------
+bus_data, load_data, gen_data, line_data, tran_data, \
+mva_base, bus_to_ind, ind_to_bus = rd.read_network_data_from_file(filename)
+
+# ------------------------------------------------------------------------------
+# LOAD NETWORK DATA INTO Ybus/Zbus
 # ------------------------------------------------------------------------------
 lnd4fa.LoadNetworkData4FA(filename)
 
@@ -52,7 +59,7 @@ with open("results_B.txt", "w", encoding="utf-8") as outfile:
         # Header
         outfile.write(f"--- {ft_desc} (Type {ft_code}) at Bus {FaultBus} ---\n\n")
 
-        # Capture display output
+        # Capture display output (pu + kA)
         buf = io.StringIO()
         with redirect_stdout(buf):
             fa.DisplayFaultAnalysisResults(
@@ -62,7 +69,9 @@ with open("results_B.txt", "w", encoding="utf-8") as outfile:
                 ft_code,
                 FaultImpedance,
                 PrefaultVoltage,
-                lnd4fa.bus_to_ind
+                lnd4fa.bus_to_ind,
+                mva_base,            # <-- new
+                bus_data             # <-- new
             )
         outfile.write(buf.getvalue())
         outfile.write("\n\n")
@@ -75,7 +84,9 @@ with open("results_B.txt", "w", encoding="utf-8") as outfile:
                 ft_code,
                 FaultImpedance,
                 PrefaultVoltage,
-                lnd4fa.bus_to_ind
+                lnd4fa.bus_to_ind,
+                mva_base,            # <-- new
+                bus_data             # <-- new
             )
 
 print("All fault cases processed. Results exported to results_B.txt")

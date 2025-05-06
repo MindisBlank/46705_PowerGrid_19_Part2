@@ -102,8 +102,8 @@ def Calculate_Sequence_Fault_Currents(Zbus0, Zbus1, Zbus2, bus_to_ind, fault_bus
         Z_parallel = ((Z0_f + 3 * Zf) * (Z2_f + 3 * Zf)) / (Z0_f + Z2_f + 3 * Zf)
         Z_eq = Z1_f + Z_parallel
         I1 = Vf / Z_eq
-        I0 = ((Z2_f + 3 * Zf) / (Z0_f + Z2_f + 3 * Zf)) * I1
         I2 = ((Z0_f + 3 * Zf) / (Z0_f + Z2_f + 3 * Zf)) * I1
+        I0 = -(I1 + I2) #((Z2_f + 3 * Zf) / (Z0_f + Z2_f + 3 * Zf)) * I1
         Iseq[0] = I0
         Iseq[1] = I1
         Iseq[2] = I2
@@ -243,28 +243,34 @@ def Convert_Sequence2Phase_Voltages(Vseq_mat):
 # #  Displaying the results in the terminal window   #
 # ####################################################
 # 2. the DisplayFaultAnalysisResults() function
-def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf,bus_to_ind):
+def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf, bus_to_ind, mva_base, bus_data):
     """
-    Displays phase fault currents (Iph) at the faulted bus and the phase line-to-ground
-    voltages (Vph_mat) at all buses.
+    Displays phase fault currents (Iph) at the faulted bus (in pu and kA)
+    and the phase line-to-ground voltages (Vph_mat) at all buses.
     
     Parameters:
-        Iph : list or array-like
-            A list [I_a, I_b, I_c] containing the phase currents at the faulted bus.
-        Vph_mat : np.array
-            An N x 3 matrix of phase line-to-ground voltages (each row corresponds to a bus,
-            with columns representing phases a, b, and c).
+        Iph : list of complex
+            [Ia, Ib, Ic] phase currents at the faulted bus (pu).
+        Vph_mat : np.ndarray
+            N×3 matrix of phase voltages at all buses (pu).
         fault_bus : int
             Bus number where the fault occurs.
         fault_type : int
-            Fault type code (0: Three-phase fault, 1: Single line-to-ground fault,
-            2: Line-to-line fault, 3: Double line-to-ground fault).
+            0=3ph, 1=SLG, 2=LL, 3=DLG.
         Zf : complex
-            Fault impedance (in per unit).
+            Fault impedance (pu).
         Vf : complex
-            Prefault voltage (in per unit).
+            Prefault voltage (pu).
+        bus_to_ind : dict
+            Mapping bus→index.
+        mva_base : float
+            System MVA base (e.g. 100).
+        bus_data : list
+            Raw bus data from ReadNetworkData; bus_data[idx][5] is kV base.
     """
-    # Dictionary to translate fault type code to a descriptive string.
+    import numpy as np
+
+    # --- header ---
     fault_dict = {
         0: "Three-phase fault",
         1: "Single Line-to-Ground fault",
@@ -272,47 +278,47 @@ def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf,bus_
         3: "Double Line-to-Ground fault"
     }
     fault_str = fault_dict.get(fault_type, "Unknown Fault Type")
-    
+
     print("==============================================================")
     print("|                  Fault Analysis Results                    |")
     print("==============================================================")
     print(f" {fault_str} at Bus {fault_bus}")
     print(f" Prefault Voltage: Vf = {Vf:.3f} (pu)")
-    print(f" Fault Impedance: Zf = {Zf:.3f} (pu)")
-    print("")
-    
-    # Helper function: returns a string with magnitude and angle (in degrees) using numpy.
-    def cpx_mag_ang_str(c):
-        mag = np.abs(c)
-        ang = np.angle(c, deg=True)  # angle in degrees using numpy
-        return f"{mag:.3f} ∠ {ang:6.2f}°"
-    
-    # --- Display Phase Currents at the Faulted Bus ---
+    print(f" Fault Impedance:    Zf = {Zf:.3f} (pu)\n")
+
+    # Compute base current (kA): Ib = S_base [MVA] / (√3·V_base [kV])
+    idx = bus_to_ind[fault_bus]
+    V_base_kV = bus_data[idx][5]
+    I_base_kA = mva_base / (np.sqrt(3) * V_base_kV)
+
+    # helper to format complex in pu + kA
+    def fmt_I(cpu):
+        mag = np.abs(cpu)
+        ang = np.angle(cpu, deg=True)
+        kA = mag * I_base_kA
+        return f"{mag:.3f} ∠{ang:6.2f}° pu   /   {kA:.2f} kA"
+
+    # --- Phase currents at the fault ---
     print("--------------------------------------------------------------")
     print("                   Phase Currents at Fault                   ")
+    print("        (pu)                  (kA)")
     print("--------------------------------------------------------------")
-    Ia_str = cpx_mag_ang_str(Iph[0])
-    Ib_str = cpx_mag_ang_str(Iph[1])
-    Ic_str = cpx_mag_ang_str(Iph[2])
-    
-    print(f"  Phase a: {Ia_str}")
-    print(f"  Phase b: {Ib_str}")
-    print(f"  Phase c: {Ic_str}")
-    print("")
-    
-    # --- Display Phase Voltages at All Buses ---
+    print(f"  Phase a: {fmt_I(Iph[0])}")
+    print(f"  Phase b: {fmt_I(Iph[1])}")
+    print(f"  Phase c: {fmt_I(Iph[2])}\n")
+
+    # --- Phase voltages (pu only) ---
     print("--------------------------------------------------------------")
     print("           Phase Line-to-Ground Voltages (all buses)         ")
     print("--------------------------------------------------------------")
     print(f"{'Bus':>4s}  {'Phase a':>20s}  {'Phase b':>20s}  {'Phase c':>20s}")
     print("--------------------------------------------------------------")
-    
     num_buses = Vph_mat.shape[0]
     for i in range(num_buses):
-        bus_number = list(bus_to_ind.keys())[list(bus_to_ind.values()).index(i)]
-        Va_str = cpx_mag_ang_str(Vph_mat[i, 0])
-        Vb_str = cpx_mag_ang_str(Vph_mat[i, 1])
-        Vc_str = cpx_mag_ang_str(Vph_mat[i, 2])
-        print(f"{bus_number:4d}  {Va_str:>20s}  {Vb_str:>20s}  {Vc_str:>20s}")
-    
+        bus_no = list(bus_to_ind.keys())[list(bus_to_ind.values()).index(i)]
+        Va = Vph_mat[i,0];  Vb = Vph_mat[i,1];  Vc = Vph_mat[i,2]
+        def cpx_str(c):
+            return f"{np.abs(c):.3f} ∠{np.angle(c,deg=True):6.2f}°"
+        print(f"{bus_no:4d}  {cpx_str(Va):>20s}  {cpx_str(Vb):>20s}  {cpx_str(Vc):>20s}")
     print("==============================================================")
+
