@@ -278,8 +278,12 @@ def DisplayFaultAnalysisResults(Iph, Vph_mat, fault_bus, fault_type, Zf, Vf, bus
     # helper to format complex in pu + kA
     def fmt_I(cpu):
         mag = np.abs(cpu)
-        ang = np.angle(cpu, deg=True)
-        kA = mag * I_base_kA
+        # if it’s basically zero, force the angle to zero
+        if mag < 1e-6:
+            ang = 0.0
+        else:
+            ang = np.angle(cpu, deg=True)
+        kA  = mag * I_base_kA
         return f"{mag:.3f} ∠{ang:6.2f}° pu   /   {kA:.2f} kA"
 
     # --- Phase currents at the fault ---
